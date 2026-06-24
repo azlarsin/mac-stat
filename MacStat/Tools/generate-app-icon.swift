@@ -121,12 +121,9 @@ private func renderIcon(size: Int) -> CGImage {
     let baseRect = CGRect(x: 74, y: 74, width: 876, height: 876)
     let basePath = CGPath(roundedRect: baseRect, cornerWidth: 204, cornerHeight: 204, transform: nil)
 
-    context.saveGState()
-    context.setShadow(offset: CGSize(width: 0, height: -28), blur: 46, color: color(0x000000, alpha: 0.38))
     context.addPath(basePath)
     context.setFillColor(color(0x111820))
     context.fillPath()
-    context.restoreGState()
 
     context.saveGState()
     context.addPath(basePath)
