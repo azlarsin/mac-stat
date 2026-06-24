@@ -94,14 +94,18 @@ class SMCReader {
     }
 
     func cpuTemperature() -> Double? {
-        for key in ["TC0D", "TC0E", "TC0F", "TC0P", "TC0H"] {
+        // Apple Silicon (M-series) keys, then Intel fallback
+        for key in ["Tp09", "Tp0T", "Tp01", "Tp05", "Tp0D", "Tp0b", "Tp0A", "Tp0B", "Tp0C",
+                    "TC0D", "TC0E", "TC0F", "TC0P", "TC0H"] {
             if let d = readKey(key), let t = sp78(d) { return t }
         }
         return nil
     }
 
     func gpuTemperature() -> Double? {
-        for key in ["TG0D", "TG0P", "TG0H"] {
+        // Apple Silicon (M-series) keys, then Intel fallback
+        for key in ["Tg05", "Tg0D", "Tg0L", "Tg0T", "Tg0b",
+                    "TG0D", "TG0P", "TG0H"] {
             if let d = readKey(key), let t = sp78(d) { return t }
         }
         return nil

@@ -288,16 +288,20 @@ class AppSettings: ObservableObject {
 
 struct SettingsView: View {
     @ObservedObject var s = AppSettings.shared
+    @EnvironmentObject var model: StatsModel
     @State private var draggingPopoverItem: PopoverItem?
     @State private var draggingMenuBarItem: MenuBarItem?
     @State private var hoveringPopoverItem: PopoverItem?
     @State private var hoveringMenuBarItem: MenuBarItem?
     @State private var isDraggingSortItem = false
 
+    private func isFanItem(_ item: PopoverItem) -> Bool { item == .fanSpeed }
+    private func isFanItem(_ item: MenuBarItem) -> Bool { item == .fanSpeed || item == .fanSpeedPct }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
                 sectionHeaderWithReset("Popover Items") { s.resetPopoverOrder() }
-                ForEach(s.popoverOrder, id: \.self) { item in
+                ForEach(s.popoverOrder.filter { !isFanItem($0) || model.hasFan }, id: \.self) { item in
                     popoverRow(item)
                         .onDrop(
                             of: [.text],
@@ -313,7 +317,7 @@ struct SettingsView: View {
                 Divider().padding(.vertical, 8)
 
                 sectionHeaderWithReset("Menu Bar Items") { s.resetMenuBarOrder() }
-                ForEach(s.menuBarOrder, id: \.self) { item in
+                ForEach(s.menuBarOrder.filter { !isFanItem($0) || model.hasFan }, id: \.self) { item in
                     menuBarRow(item)
                         .onDrop(
                             of: [.text],

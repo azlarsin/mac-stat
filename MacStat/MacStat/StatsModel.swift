@@ -17,12 +17,14 @@ class StatsModel: ObservableObject {
     @Published var fanPercents: [Double] = []
     @Published var menuBarParts: [(symbol: String, text: String)] = []
     var suppressLabelUpdates = false
+    let hasFan: Bool
 
     private let smc = SMCReader()
     private var timer: Timer?
     private var settingsCancellable: AnyCancellable?
 
     init() {
+        hasFan = smc.fanCount() > 0
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.refresh()
@@ -72,7 +74,7 @@ class StatsModel: ObservableObject {
             case .cpuUsage:
                 return cpuUsage.map { ("gauge.medium", String(format: "%.0f%%", $0.totalPercent)) }
             case .cpuThrottle:
-                guard let lim = cpuSpeedLimit else { return nil }
+                let lim = cpuSpeedLimit ?? 100
                 return ("speedometer", lim < 100 ? "\(lim)%▼" : "\(lim)%")
             case .memUsed:
                 return memory.map { ("memorychip", String(format: "%.0fG", $0.usedGB)) }
