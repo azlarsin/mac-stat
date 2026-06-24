@@ -67,4 +67,4 @@ Signed + notarized DMG:
 
 ## Author
 
-[azlarsin](https://github.com/azlarsin)
+[azlar](https://github.com/azlarsin)
