@@ -21,6 +21,7 @@ xcuserdata/
 
 # Release artifacts (attach to GitHub Releases, don't commit)
 MacStat.dmg
+release/
 
 # Claude
 .claude/settings.local.json
