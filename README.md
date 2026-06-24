@@ -1,41 +1,52 @@
-# MacStat
+<p align="center">
+  <img src="docs/icon.png" width="96" alt="MacStat">
+</p>
 
-A minimal macOS menubar system monitor. No bloat, no subscriptions — just the numbers you care about.
+<h1 align="center">MacStat</h1>
 
-![Menubar](docs/screenshots/menubar.png)
+<p align="center">
+  A no-frills macOS menubar monitor. Live stats, zero clutter.
+</p>
 
-## Features
+<p align="center">
+  <img src="docs/screenshots/menubar.png" alt="Menubar">
+</p>
 
-- **Temperature** — CPU, GPU, battery
-- **CPU** — usage %, throttle / speed limit
-- **Memory** — used GB or %
-- **Fan** — RPM or %
-- **Network** — download / upload throughput
-- **Disk** — free space, read / write speed
-- **Battery** — charge %
+---
 
-All items are individually toggleable and reorderable from the Settings panel.
+## What it shows
+
+Pick exactly what appears in your menubar and popover — everything is toggleable and reorderable.
+
+| | |
+|---|---|
+| **Temperature** | CPU · GPU · Battery |
+| **CPU** | Usage % · Throttle / speed limit |
+| **Memory** | Used GB or % |
+| **Fan** | RPM or % |
+| **Network** | Download · Upload |
+| **Disk** | Free space · Read / write speed |
+| **Battery** | Charge % |
 
 ## Screenshots
 
-| Popover | Settings |
-|---|---|
-| ![Popover](docs/screenshots/popover.png) | ![Settings](docs/screenshots/settings.png) |
+<p align="center">
+  <img src="docs/screenshots/popover.png" width="260" alt="Popover">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/settings.png" width="260" alt="Settings">
+</p>
 
-## Installation
+## Install
 
 1. Download `MacStat.dmg` from [Releases](https://github.com/azlarsin/mac-stat/releases)
-2. Open the DMG and drag **MacStat.app** to `/Applications`
-3. Launch MacStat — it lives in your menubar
+2. Open the DMG and drag **MacStat** to `/Applications`
+3. Launch — it lives quietly in your menubar
 
-> **Note:** Installing to `/Applications` is required for Launch at Login to work.
+> Installing to `/Applications` is required for **Launch at Login**.
 
-## Requirements
+**Requirements:** macOS 13 Ventura or later · Intel & Apple Silicon
 
-- macOS 13 Ventura or later
-- Intel or Apple Silicon (universal binary)
-
-## Build from Source
+## Build from source
 
 ```bash
 xcodebuild \
@@ -48,14 +59,12 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-To build a signed, notarized DMG for distribution:
+Signed + notarized DMG:
 
 ```bash
 ./release.sh
 ```
 
-Requires a valid Developer ID Application certificate and a stored `notarytool` keychain profile named `MacStatNotary`.
-
 ## Author
 
-[azlar](https://github.com/azlarsin)
+[azlarsin](https://github.com/azlarsin)
