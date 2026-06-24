@@ -59,12 +59,6 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-Signed + notarized DMG:
-
-```bash
-./release.sh
-```
-
 ## Author
 
 [azlar](https://github.com/azlarsin)
