@@ -7,6 +7,10 @@ set -e
 
 PROJ="MacStat/MacStat.xcodeproj/project.pbxproj"
 
+# ── signing / notarization config ────────────────────────────────────────────
+SIGN_ID="Developer ID Application: CHENG CHEN (3759733MVC)"
+NOTARY_PROFILE="macstat-notary"   # set up once: xcrun notarytool store-credentials
+
 # ── current version ────────────────────────────────────────────────────────────
 CURRENT=$(grep "MARKETING_VERSION" "$PROJ" | head -1 \
           | sed 's/.*= \(.*\);/\1/' | tr -d '[:space:]')
@@ -42,9 +46,17 @@ xcodebuild -project MacStat/MacStat.xcodeproj \
     ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
     build 2>&1 | grep -E "(BUILD SUCCEEDED|BUILD FAILED|error:)"
 
+APP=/tmp/macstat-release/Build/Products/Release/MacStat.app
+
+# ── sign with Developer ID + hardened runtime ───────────────────────────────────
+# (no entitlements: app needs none, and this strips the debug-only
+#  get-task-allow entitlement that would make notarization fail)
+echo "signing..."
+codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$APP"
+codesign --verify --strict "$APP"
+
 # ── package (dmg with drag-to-install Applications symlink) ─────────────────────
 mkdir -p release
-APP=/tmp/macstat-release/Build/Products/Release/MacStat.app
 DMG="release/MacStat-$NEW.dmg"
 rm -f "$DMG"
 
@@ -54,6 +66,12 @@ ln -s /Applications "$STAGING/Applications"
 hdiutil create -volname "MacStat" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
 rm -rf "$STAGING"
 echo "packaged: $DMG ($(du -sh "$DMG" | cut -f1))"
+
+# ── notarize + staple ───────────────────────────────────────────────────────────
+echo "notarizing (this can take a few minutes)..."
+xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+xcrun stapler staple "$DMG"
+spctl -a -vvv -t install "$DMG" 2>&1 | head -3 || true
 
 # ── commit + tag + push ─────────────────────────────────────────────────────────
 git add "$PROJ"
