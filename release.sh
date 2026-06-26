@@ -39,15 +39,21 @@ xcodebuild -project MacStat/MacStat.xcodeproj \
     -scheme MacStat \
     -configuration Release \
     -derivedDataPath /tmp/macstat-release \
+    ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
     build 2>&1 | grep -E "(BUILD SUCCEEDED|BUILD FAILED|error:)"
 
-# ── package ─────────────────────────────────────────────────────────────────────
+# ── package (dmg with drag-to-install Applications symlink) ─────────────────────
 mkdir -p release
 APP=/tmp/macstat-release/Build/Products/Release/MacStat.app
-ZIP="release/MacStat-$NEW.zip"
-rm -f "$ZIP"
-ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
-echo "packaged: $ZIP ($(du -sh "$ZIP" | cut -f1))"
+DMG="release/MacStat-$NEW.dmg"
+rm -f "$DMG"
+
+STAGING=$(mktemp -d)
+cp -R "$APP" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+hdiutil create -volname "MacStat" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
+rm -rf "$STAGING"
+echo "packaged: $DMG ($(du -sh "$DMG" | cut -f1))"
 
 # ── commit + tag + push ─────────────────────────────────────────────────────────
 git add "$PROJ"
@@ -59,4 +65,4 @@ git push origin "v$NEW"
 echo ""
 echo "done. create GitHub Release:"
 echo "  https://github.com/azlarsin/mac-stat/releases/new?tag=v$NEW"
-echo "  attach: $ZIP"
+echo "  attach: $DMG"
