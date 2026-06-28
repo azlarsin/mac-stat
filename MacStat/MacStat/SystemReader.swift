@@ -194,15 +194,19 @@ func readDiskIO() -> DiskIOStats? {
 // MARK: Disk
 
 func readDiskUsage() -> DiskUsage? {
-    guard let attrs = try? FileManager.default.attributesOfFileSystem(forPath: "/"),
-          let total = attrs[.systemSize] as? Int64,
-          let free  = attrs[.systemFreeSize] as? Int64 else { return nil }
+    let url = URL(fileURLWithPath: "/")
+    guard let values = try? url.resourceValues(forKeys: [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityForImportantUsageKey
+          ]),
+          let total = values.volumeTotalCapacity.map(Int64.init),
+          let free  = values.volumeAvailableCapacityForImportantUsage else { return nil }
     let used = total - free
     let pct  = total > 0 ? Int(Double(used) / Double(total) * 100) : 0
     return DiskUsage(
-        totalGB: Double(total) / 1_073_741_824,
-        usedGB:  Double(used)  / 1_073_741_824,
-        freeGB:  Double(free)  / 1_073_741_824,
+        totalGB: Double(total) / 1_000_000_000,
+        usedGB:  Double(used)  / 1_000_000_000,
+        freeGB:  Double(free)  / 1_000_000_000,
         usedPercent: pct
     )
 }

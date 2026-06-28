@@ -6,6 +6,7 @@ extension Notification.Name {
     static let macStatResizePopover = Notification.Name("com.azlar.macstat.resizePopover")
     static let macStatClosePopover  = Notification.Name("com.azlar.macstat.closePopover")
     static let macStatOpenSettings  = Notification.Name("com.azlar.macstat.openSettings")
+    static let macStatShowStats     = Notification.Name("com.azlar.macstat.showStats")
 }
 
 @main
@@ -66,6 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         model.suppressLabelUpdates = false
         model.menuBarParts = model.buildParts()
+        NotificationCenter.default.post(name: .macStatShowStats, object: nil)
     }
 
     @objc func closePopoverFromSettings() {
@@ -132,16 +134,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc func togglePopover(_ sender: AnyObject?) {
-        guard let button = statusItem?.button else { return }
         guard let pop = popover else { return }
         if pop.isShown {
             pop.performClose(sender)
         } else {
-            model.suppressLabelUpdates = true
-            updatePopoverSize()
-            pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            NSApp.activate(ignoringOtherApps: true)
+            showPopover()
         }
+    }
+
+    // Show the popover and make its window key, so the NSVisualEffectView
+    // background renders in its active (vibrant) appearance instead of the
+    // washed-out inactive state it shows when the app isn't frontmost.
+    private func showPopover() {
+        guard let button = statusItem?.button, let pop = popover else { return }
+        model.suppressLabelUpdates = true
+        updatePopoverSize()
+        NSApp.activate(ignoringOtherApps: true)
+        pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        pop.contentViewController?.view.window?.makeKey()
     }
 
     private func showContextMenu() {
@@ -162,7 +172,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc private func showAbout() {
         let alert = NSAlert()
         alert.messageText = "MacStat"
-        alert.informativeText = "A minimal macOS menubar system monitor.\n\nVersion 1.0\nAuthor: azlar\ngithub.com/azlarsin/mac-stat\n© 2026"
+        let info = Bundle.main.infoDictionary
+        let version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0"
+        let build = (info?["CFBundleVersion"] as? String) ?? "1"
+        alert.informativeText = "A minimal macOS menubar system monitor.\n\nVersion \(version) (\(build))\nAuthor: azlar\ngithub.com/azlarsin/mac-stat\n© 2026"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.icon = NSApp.applicationIconImage
@@ -171,12 +184,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc private func openSettings() {
-        guard let button = statusItem?.button, let pop = popover else { return }
+        guard let pop = popover else { return }
         if pop.isShown { pop.performClose(nil) }
-        model.suppressLabelUpdates = true
-        updatePopoverSize()
-        pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        NSApp.activate(ignoringOtherApps: true)
+        showPopover()
         NotificationCenter.default.post(name: .macStatOpenSettings, object: nil)
     }
 

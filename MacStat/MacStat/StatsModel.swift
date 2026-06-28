@@ -79,7 +79,7 @@ class StatsModel: ObservableObject {
             case .memUsed:
                 return memory.map { ("memorychip", String(format: "%.0fG", $0.usedGB)) }
             case .memPct:
-                return memory.map { ("memorychip", String(format: "%d%%", $0.usedPercent)) }
+                return memory.map { ("memorychip.fill", String(format: "%d%%", $0.usedPercent)) }
             case .netDown:
                 return network.map { ("arrow.down", formatBytes($0.rxBytesPerSec)) }
             case .netUp:

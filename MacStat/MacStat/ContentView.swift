@@ -23,6 +23,9 @@ struct ContentView: View {
                 NotificationCenter.default.post(name: .macStatResizePopover, object: nil)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .macStatShowStats)) { _ in
+            showSettings = false
+        }
     }
 
     // MARK: Main stats

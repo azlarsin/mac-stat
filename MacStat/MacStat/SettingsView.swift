@@ -244,6 +244,22 @@ class AppSettings: ObservableObject {
         menuBarOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)
     }
 
+    func setAllPopover(_ items: [PopoverItem], visible: Bool) {
+        for item in items { setPopoverItem(item, visible: visible) }
+    }
+
+    func setAllMenuBar(_ items: [MenuBarItem], enabled: Bool) {
+        // Assign a brand-new Set instead of mutating in place. @Published does
+        // not fire objectWillChange (and the didSet that persists the choice is
+        // not invoked) for in-place mutations such as formUnion/subtract — that
+        // left the menubar label stale after "Select All" and, in the worst
+        // case, the status item stopped updating until restart. Going through
+        // the setter guarantees the Combine sink + saveMenuBarEnabled() fire.
+        menuBarEnabled = enabled
+            ? menuBarEnabled.union(items)
+            : menuBarEnabled.subtracting(items)
+    }
+
     func resetPopoverOrder() {
         popoverOrder = PopoverItem.allCases
         for item in PopoverItem.allCases { setPopoverItem(item, visible: true) }
@@ -298,10 +314,17 @@ struct SettingsView: View {
     private func isFanItem(_ item: PopoverItem) -> Bool { item == .fanSpeed }
     private func isFanItem(_ item: MenuBarItem) -> Bool { item == .fanSpeed || item == .fanSpeedPct }
 
+    private var displayedPopoverItems: [PopoverItem] {
+        s.popoverOrder.filter { !isFanItem($0) || model.hasFan }
+    }
+    private var displayedMenuBarItems: [MenuBarItem] {
+        s.menuBarOrder.filter { !isFanItem($0) || model.hasFan }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-                sectionHeaderWithReset("Popover Items") { s.resetPopoverOrder() }
-                ForEach(s.popoverOrder.filter { !isFanItem($0) || model.hasFan }, id: \.self) { item in
+                sectionHeader("Popover Items") { s.resetPopoverOrder() }
+                ForEach(displayedPopoverItems, id: \.self) { item in
                     popoverRow(item)
                         .onDrop(
                             of: [.text],
@@ -313,11 +336,15 @@ struct SettingsView: View {
                             )
                         )
                 }
+                selectAllRow(isOn: Binding(
+                    get: { displayedPopoverItems.allSatisfy { s.isPopoverItemVisible($0) } },
+                    set: { on in s.setAllPopover(displayedPopoverItems, visible: on) }
+                ))
 
                 Divider().padding(.vertical, 8)
 
-                sectionHeaderWithReset("Menu Bar Items") { s.resetMenuBarOrder() }
-                ForEach(s.menuBarOrder.filter { !isFanItem($0) || model.hasFan }, id: \.self) { item in
+                sectionHeader("Menu Bar Items") { s.resetMenuBarOrder() }
+                ForEach(displayedMenuBarItems, id: \.self) { item in
                     menuBarRow(item)
                         .onDrop(
                             of: [.text],
@@ -329,6 +356,10 @@ struct SettingsView: View {
                             )
                         )
                 }
+                selectAllRow(isOn: Binding(
+                    get: { displayedMenuBarItems.allSatisfy { s.isInMenuBar($0) } },
+                    set: { on in s.setAllMenuBar(displayedMenuBarItems, enabled: on) }
+                ))
 
                 Divider().padding(.vertical, 8)
 
@@ -470,7 +501,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func sectionHeaderWithReset(_ text: String, onReset: @escaping () -> Void) -> some View {
+    private func sectionHeader(_ text: String, onReset: @escaping () -> Void) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(text)
                 .font(.system(size: 10, weight: .semibold))
@@ -483,6 +514,19 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 4)
         .padding(.bottom, 2)
+    }
+
+    @ViewBuilder
+    private func selectAllRow(isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text("Select All")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+        .toggleStyle(.checkbox)
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+        .padding(.bottom, 1)
     }
 
     @ViewBuilder

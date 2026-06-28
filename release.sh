@@ -48,6 +48,20 @@ xcodebuild -project MacStat/MacStat.xcodeproj \
 
 APP=/tmp/macstat-release/Build/Products/Release/MacStat.app
 
+# ── guard: must be a universal (arm64 + x86_64) binary ───────────────────────────
+# A previous release shipped x86_64-only, which made Apple Silicon Macs run it
+# through Rosetta 2 and surface an incompatibility/"not optimized" prompt.
+# Fail loudly here rather than ever ship a single-arch build again.
+BIN="$APP/Contents/MacOS/MacStat"
+if ! lipo -info "$BIN" 2>/dev/null | grep -q arm64 \
+   || ! lipo -info "$BIN" 2>/dev/null | grep -q x86_64; then
+    echo "error: binary is not universal (arm64 + x86_64):"
+    lipo -info "$BIN"
+    echo "check for ARCHS / EXCLUDED_ARCHS in your env: env | grep -iE 'arch|excluded'"
+    exit 1
+fi
+echo "universal ok: $(lipo -info "$BIN" | sed 's/.*are: //')"
+
 # ── sign with Developer ID + hardened runtime ───────────────────────────────────
 # (no entitlements: app needs none, and this strips the debug-only
 #  get-task-allow entitlement that would make notarization fail)
