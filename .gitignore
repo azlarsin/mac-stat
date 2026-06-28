@@ -25,3 +25,6 @@ release/
 
 # Claude
 .claude/settings.local.json
+
+# Local env (App Store Connect notary creds reference — keep out of git)
+.env
