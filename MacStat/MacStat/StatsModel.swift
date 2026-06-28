@@ -1,5 +1,14 @@
 import Foundation
 import Combine
+import AppKit
+
+/// One rendered segment of the menu bar label.
+/// `image` (when set) is drawn instead of looking up `symbol` as an SF Symbol.
+struct MenuBarPart {
+    let symbol: String
+    let text: String
+    var image: NSImage? = nil
+}
 
 class StatsModel: ObservableObject {
     @Published var cpuTemp: Double? = nil
@@ -15,7 +24,7 @@ class StatsModel: ObservableObject {
     @Published var diskIO: DiskIOStats? = nil
     @Published var fanSpeeds: [Double] = []
     @Published var fanPercents: [Double] = []
-    @Published var menuBarParts: [(symbol: String, text: String)] = []
+    @Published var menuBarParts: [MenuBarPart] = []
     var suppressLabelUpdates = false
     let hasFan: Bool
 
@@ -62,43 +71,115 @@ class StatsModel: ObservableObject {
         if !suppressLabelUpdates { menuBarParts = buildParts() }
     }
 
-    func buildParts() -> [(symbol: String, text: String)] {
-        AppSettings.shared.visibleMenuBarItems.compactMap { item -> (String, String)? in
+    func buildParts() -> [MenuBarPart] {
+        AppSettings.shared.visibleMenuBarItems.flatMap { item -> [MenuBarPart] in
             switch item {
             case .cpuTemp:
-                return cpuTemp.map { ("thermometer.medium", String(format: "%.0f°", $0)) }
+                guard let v = cpuTemp else { return [] }
+                return [MenuBarPart(symbol: "thermometer.medium", text: String(format: "%.0f°", v))]
             case .gpuTemp:
-                return gpuTemp.map { ("thermometer.high", String(format: "G%.0f°", $0)) }
+                guard let v = gpuTemp else { return [] }
+                return [MenuBarPart(symbol: "thermometer.high", text: String(format: "G%.0f°", v))]
             case .batteryTemp:
-                return batteryTemp.map { ("battery.100", String(format: "%.0f°", $0)) }
+                guard let v = batteryTemp else { return [] }
+                return [MenuBarPart(symbol: "battery.100", text: String(format: "%.0f°", v))]
             case .cpuUsage:
-                return cpuUsage.map { ("gauge.medium", String(format: "%.0f%%", $0.totalPercent)) }
+                guard let v = cpuUsage else { return [] }
+                return [MenuBarPart(symbol: "gauge.medium", text: String(format: "%.0f%%", v.totalPercent))]
             case .cpuThrottle:
                 let lim = cpuSpeedLimit ?? 100
-                return ("speedometer", lim < 100 ? "\(lim)%▼" : "\(lim)%")
+                return [MenuBarPart(symbol: "speedometer", text: lim < 100 ? "\(lim)%▼" : "\(lim)%")]
             case .memUsed:
-                return memory.map { ("memorychip", String(format: "%.0fG", $0.usedGB)) }
+                guard let v = memory else { return [] }
+                return [MenuBarPart(symbol: "memorychip", text: String(format: "%.0fG", v.usedGB))]
             case .memPct:
-                return memory.map { ("memorychip.fill", String(format: "%d%%", $0.usedPercent)) }
+                guard let v = memory else { return [] }
+                return [MenuBarPart(symbol: "memorychip.fill", text: String(format: "%d%%", v.usedPercent))]
             case .netDown:
-                return network.map { ("arrow.down", formatBytes($0.rxBytesPerSec)) }
+                guard let v = network else { return [] }
+                return [MenuBarPart(symbol: "arrow.down", text: formatBytes(v.rxBytesPerSec))]
             case .netUp:
-                return network.map { ("arrow.up", formatBytes($0.txBytesPerSec)) }
+                guard let v = network else { return [] }
+                return [MenuBarPart(symbol: "arrow.up", text: formatBytes(v.txBytesPerSec))]
             case .fanSpeed:
-                return fanSpeeds.first.map { ("fan", String(format: "%.0f", $0)) }
+                guard let v = fanSpeeds.first else { return [] }
+                return [MenuBarPart(symbol: "fan", text: String(format: "%.0f", v))]
             case .fanSpeedPct:
-                return fanPercents.first.map { ("fan.fill", String(format: "%.0f%%", $0)) }
+                guard let v = fanPercents.first else { return [] }
+                return [MenuBarPart(symbol: "fan.fill", text: String(format: "%.0f%%", v))]
             case .diskFree:
-                return disk.map { ("internaldrive", String(format: "%.0fG", $0.freeGB)) }
+                guard let v = disk else { return [] }
+                return [MenuBarPart(symbol: "internaldrive", text: String(format: "%.0fG", v.freeGB))]
             case .diskWrite:
-                return diskIO.map { ("arrow.up.doc", formatBytes($0.writeBytesPerSec)) }
+                guard let v = diskIO else { return [] }
+                return [MenuBarPart(symbol: "arrow.up.doc", text: formatBytes(v.writeBytesPerSec))]
             case .diskRead:
-                return diskIO.map { ("arrow.down.doc", formatBytes($0.readBytesPerSec)) }
+                guard let v = diskIO else { return [] }
+                return [MenuBarPart(symbol: "arrow.down.doc", text: formatBytes(v.readBytesPerSec))]
             case .batteryPct:
-                guard let b = battery else { return nil }
-                let sym = b.isCharging ? "battery.100.bolt" : "battery.75"
-                return (sym, "\(b.percent)%")
+                guard let b = battery else { return [] }
+                // Charging keeps the native bolt glyph (conventional charging
+                // indicator); otherwise draw a battery whose fill tracks the
+                // real 0-100% level instead of a fixed ~75% symbol.
+                if b.isCharging {
+                    return [MenuBarPart(symbol: "battery.100.bolt", text: String(format: "%d%%", b.percent))]
+                }
+                return [MenuBarPart(symbol: "", text: String(format: "%d%%", b.percent),
+                                    image: batteryImage(percent: b.percent))]
             }
         }
+    }
+
+    /// A battery icon whose internal fill tracks `percent` across 0-100%.
+    /// Drawn by hand (outline + terminal + proportional fill) tinted to match
+    /// the menu bar appearance. Custom images in an NSStatusItem attributed
+    /// title don't get AppKit's automatic SF-Symbol template tinting, so we
+    /// pick the color ourselves (white in dark mode, black in light).
+    private func batteryImage(percent: Int) -> NSImage {
+        let pct = max(0, min(100, percent))
+        let W: CGFloat = 20, H: CGFloat = 10
+        let color = Self.menuBarIconColor
+        let img = NSImage(size: NSSize(width: W, height: H), flipped: false) { _ in
+            let bodyLeft: CGFloat = 1.0, bodyRight: CGFloat = 16.0
+            let bodyBottom: CGFloat = 1.5, bodyTop: CGFloat = 8.5
+            let bodyW = bodyRight - bodyLeft, bodyH = bodyTop - bodyBottom
+
+            let body = NSBezierPath(roundedRect: NSRect(x: bodyLeft, y: bodyBottom,
+                                                        width: bodyW, height: bodyH),
+                                    xRadius: 1.8, yRadius: 1.8)
+            body.lineWidth = 1.0
+            color.setStroke()
+            body.stroke()
+
+            if pct > 0 {
+                let inset: CGFloat = 1.6
+                let availW = bodyW - 2 * inset
+                let fillW = max(1.2, availW * CGFloat(pct) / 100.0)
+                let fill = NSBezierPath(roundedRect: NSRect(x: bodyLeft + inset, y: bodyBottom + inset,
+                                                            width: fillW, height: bodyH - 2 * inset),
+                                        xRadius: 0.8, yRadius: 0.8)
+                color.setFill()
+                fill.fill()
+            }
+
+            // terminal nub
+            let nubH: CGFloat = 3.0, nubW: CGFloat = 2.0
+            let nub = NSBezierPath(roundedRect: NSRect(x: bodyRight + 0.8,
+                                                       y: (bodyBottom + bodyTop) / 2 - nubH / 2,
+                                                       width: nubW, height: nubH),
+                                   xRadius: 0.6, yRadius: 0.6)
+            color.setFill()
+            nub.fill()
+            return true
+        }
+        img.isTemplate = false
+        return img
+    }
+
+    /// Best-effort menu bar icon color: white in dark appearance, black in light.
+    private static var menuBarIconColor: NSColor {
+        let isDark = NSApp.effectiveAppearance
+            .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return isDark ? NSColor.white : NSColor.black
     }
 }

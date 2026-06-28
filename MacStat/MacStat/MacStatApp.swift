@@ -74,7 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover?.performClose(nil)
     }
 
-    private func applyMenuBarParts(_ parts: [(symbol: String, text: String)]) {
+    private func applyMenuBarParts(_ parts: [MenuBarPart]) {
         guard let button = statusItem?.button else { return }
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
         let cfg = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
@@ -98,8 +98,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         for (i, part) in parts.enumerated() {
             result.append(NSAttributedString(string: "  ", attributes: baseAttrs))
             _ = i  // suppress unused warning
-            if let img = NSImage(systemSymbolName: part.symbol, accessibilityDescription: nil)?
-                .withSymbolConfiguration(cfg) {
+            let img = part.image
+                ?? NSImage(systemSymbolName: part.symbol, accessibilityDescription: nil)?
+                    .withSymbolConfiguration(cfg)
+            if let img {
                 let attachment = NSTextAttachment()
                 attachment.image = img
                 let attachStr = NSMutableAttributedString(attachment: attachment)
