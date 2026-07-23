@@ -87,7 +87,9 @@ class StatsModel: ObservableObject {
                 guard let v = cpuUsage else { return [] }
                 return [MenuBarPart(symbol: "gauge.medium", text: String(format: "%.0f%%", v.totalPercent))]
             case .cpuThrottle:
-                let lim = cpuSpeedLimit ?? 100
+                guard let lim = cpuSpeedLimit else {
+                    return [MenuBarPart(symbol: "speedometer", text: "--")]
+                }
                 return [MenuBarPart(symbol: "speedometer", text: lim < 100 ? "\(lim)%▼" : "\(lim)%")]
             case .memUsed:
                 guard let v = memory else { return [] }

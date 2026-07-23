@@ -131,8 +131,11 @@ struct ContentView: View {
                 row("User / Sys", String(format: "%.0f%% / %.0f%%", u.userPercent, u.systemPercent))
             }
         case .cpuThrottle:
-            let lim = model.cpuSpeedLimit ?? 100
-            row("Speed Limit", "\(lim)%", color: lim < 100 ? .orange : .primary)
+            if let lim = model.cpuSpeedLimit {
+                row("Speed Limit", "\(lim)%", color: lim < 100 ? .orange : .primary)
+            } else {
+                row("Speed Limit", "--")
+            }
             if let cpus = model.availableCPUs {
                 row("Active CPUs", "\(cpus)")
             }

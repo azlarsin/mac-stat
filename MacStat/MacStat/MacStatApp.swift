@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     var model = StatsModel()
     private var cancellables = Set<AnyCancellable>()
     private var hostingController: NSHostingController<AnyView>?
+    private var aboutWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -62,6 +63,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             name: .macStatClosePopover,
             object: nil
         )
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        AppSettings.shared.stopKeepAwakeProcess()
     }
 
     func popoverDidClose(_ notification: Notification) {
@@ -172,17 +177,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc private func showAbout() {
-        let alert = NSAlert()
-        alert.messageText = "MacStat"
+        if aboutWindow?.isVisible == true {
+            aboutWindow?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
         let info = Bundle.main.infoDictionary
         let version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0"
         let build = (info?["CFBundleVersion"] as? String) ?? "1"
-        alert.informativeText = "A minimal macOS menubar system monitor.\n\nVersion \(version) (\(build))\nAuthor: azlar\ngithub.com/azlarsin/mac-stat\n© 2026"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.icon = NSApp.applicationIconImage
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "About MacStat"
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.center()
+        panel.hidesOnDeactivate = false
+
+        let view = AboutView(version: version, build: build) { [weak self] in
+            self?.aboutWindow?.close()
+        }
+        panel.contentView = NSHostingView(rootView: view)
+        panel.makeKeyAndOrderFront(nil)
+        aboutWindow = panel
         NSApp.activate(ignoringOtherApps: true)
-        alert.runModal()
     }
 
     @objc private func openSettings() {
@@ -194,5 +217,45 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+}
+
+private struct AboutView: View {
+    let version: String
+    let build: String
+    var onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 64, height: 64)
+
+            Text("MacStat")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("A minimal macOS menubar system monitor.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            VStack(spacing: 2) {
+                Text("Version \(version) (\(build))")
+                Text("Author: azlar")
+                Link("https://github.com/azlarsin/mac-stat",
+                     destination: URL(string: "https://github.com/azlarsin/mac-stat")!)
+                    .foregroundStyle(.blue)
+                    .underline()
+                Text("© 2026")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+
+            Button("OK", action: onClose)
+                .keyboardShortcut(.defaultAction)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -130,6 +130,16 @@ class AppSettings: ObservableObject {
         didSet { applyLaunchAtLogin(launchAtLogin) }
     }
 
+    // Keep the system awake while on AC power.
+    @Published var keepAwakeWithLidClosed: Bool = false {
+        didSet {
+            saveBool("keepAwakeWithLidClosed", keepAwakeWithLidClosed)
+            applyKeepAwakeWithLidClosed(keepAwakeWithLidClosed)
+        }
+    }
+
+    private var caffeinateProcess: Process?
+
     private init() {
         func b(_ key: String, _ def: Bool) -> Bool {
             UserDefaults.standard.object(forKey: key) == nil ? def : UserDefaults.standard.bool(forKey: key)
@@ -167,6 +177,11 @@ class AppSettings: ObservableObject {
         if #available(macOS 13.0, *) {
             _launchAtLogin = Published(initialValue: SMAppService.mainApp.status == .enabled)
         }
+
+        _keepAwakeWithLidClosed = Published(
+            initialValue: b("keepAwakeWithLidClosed", false)
+        )
+        applyKeepAwakeWithLidClosed(keepAwakeWithLidClosed)
     }
 
     var visiblePopoverItems: [PopoverItem] {
@@ -189,6 +204,50 @@ class AppSettings: ObservableObject {
             }
         } catch {
             DispatchQueue.main.async { self.launchAtLogin = !enable }
+        }
+    }
+
+    private func applyKeepAwakeWithLidClosed(_ enable: Bool) {
+        if !enable {
+            stopKeepAwakeProcess()
+            return
+        }
+
+        guard caffeinateProcess?.isRunning != true else { return }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
+        process.arguments = [
+            "-s",
+            "-w", String(ProcessInfo.processInfo.processIdentifier),
+        ]
+        process.terminationHandler = { [weak self, weak process] _ in
+            DispatchQueue.main.async {
+                guard let self, self.caffeinateProcess === process else { return }
+                self.caffeinateProcess = nil
+                if self.keepAwakeWithLidClosed {
+                    self.keepAwakeWithLidClosed = false
+                }
+            }
+        }
+
+        do {
+            try process.run()
+            caffeinateProcess = process
+        } catch {
+            DispatchQueue.main.async {
+                if self.keepAwakeWithLidClosed {
+                    self.keepAwakeWithLidClosed = false
+                }
+            }
+        }
+    }
+
+    func stopKeepAwakeProcess() {
+        let process = caffeinateProcess
+        caffeinateProcess = nil
+        if process?.isRunning == true {
+            process?.terminate()
         }
     }
 
@@ -363,10 +422,25 @@ struct SettingsView: View {
 
                 Divider().padding(.vertical, 8)
 
+                keepAwakeRow
+
+                Divider().padding(.vertical, 8)
+
                 launchAtLoginRow
         }
         .padding(12)
         .frame(width: 240)
+    }
+
+    private var keepAwakeRow: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            toggle("Keep Awake with Lid Closed", $s.keepAwakeWithLidClosed)
+                .padding(.horizontal, 0)
+            Text("Uses caffeinate -s; active on AC power")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 4)
+        }
     }
 
     @ViewBuilder
