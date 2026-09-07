@@ -21,7 +21,7 @@ Pick exactly what appears in your menubar and popover — everything is toggleab
 | | |
 |---|---|
 | **Temperature** | CPU · GPU · Battery |
-| **CPU** | Usage % · Thermal state / speed limit |
+| **CPU** | Usage % · Thermal state / speed limit · Low Power Mode |
 | **Memory** | Used GB or % |
 | **Fan** | RPM or % |
 | **Network** | Download · Upload |
