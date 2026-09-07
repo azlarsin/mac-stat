@@ -1,16 +1,59 @@
 import Foundation
 
-// Parses `pmset -g therm` output to get CPU speed limit percentage.
-// Also tries `powermetrics` for instantaneous CPU frequency (requires sudo, skipped here).
-// Falls back to sysctl hw.cpufrequency for nominal frequency.
+/// The app runs as a native arm64 process on Apple Silicon. On that platform
+/// macOS commonly does not publish CPU_Speed_Limit, but does expose thermal
+/// pressure through ProcessInfo.
+let isAppleSilicon: Bool = {
+#if arch(arm64)
+    true
+#else
+    false
+#endif
+}()
+
+// Parses `pmset -g therm` when macOS exposes a CPU speed limit percentage.
+// Apple Silicon commonly omits that percentage, so use its public thermal
+// pressure API to provide a meaningful performance status without sudo.
+enum ThermalPressure: Equatable {
+    case nominal
+    case fair
+    case serious
+    case critical
+
+    var popoverText: String {
+        switch self {
+        case .nominal:  return "Normal"
+        case .fair:     return "Fair"
+        case .serious:  return "Serious"
+        case .critical: return "Critical"
+        }
+    }
+
+    var isLimited: Bool {
+        self == .serious || self == .critical
+    }
+}
+
 struct ThermInfo {
     var cpuSpeedLimit: Int?    // percent from pmset (100 = not throttled)
     var schedulerLimit: Int?
     var availableCPUs: Int?
+    var thermalPressure: ThermalPressure = .nominal
+    var isLowPowerModeEnabled = false
 }
 
 func readThermInfo() -> ThermInfo {
     var info = ThermInfo()
+    let processInfo = ProcessInfo.processInfo
+    info.thermalPressure = switch processInfo.thermalState {
+    case .nominal:  .nominal
+    case .fair:     .fair
+    case .serious:  .serious
+    case .critical: .critical
+    @unknown default: .nominal
+    }
+    info.isLowPowerModeEnabled = processInfo.isLowPowerModeEnabled
+
     guard let output = runCommand("/usr/bin/pmset", args: ["-g", "therm"]) else { return info }
 
     for line in output.components(separatedBy: .newlines) {

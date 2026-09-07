@@ -62,6 +62,8 @@ struct ContentView: View {
                 return model.battery != nil
             case .diskIO:
                 return model.diskIO != nil
+            case .batteryChargeRate:
+                return model.battery?.chargingWatts != nil
             }
         }
     }
@@ -134,7 +136,14 @@ struct ContentView: View {
             if let lim = model.cpuSpeedLimit {
                 row("Speed Limit", "\(lim)%", color: lim < 100 ? .orange : .primary)
             } else {
-                row("Speed Limit", "--")
+                row("Thermal State", model.thermalPressure.popoverText,
+                    color: model.thermalPressure.isLimited ? .orange : .primary)
+                if !isAppleSilicon {
+                    row("Speed Limit", "--")
+                }
+                if model.isLowPowerModeEnabled {
+                    row("Power Mode", "Low Power", color: .orange)
+                }
             }
             if let cpus = model.availableCPUs {
                 row("Active CPUs", "\(cpus)")
@@ -167,6 +176,10 @@ struct ContentView: View {
             if let io = model.diskIO {
                 row("Disk Read",  formatBytes(io.readBytesPerSec))
                 row("Disk Write", formatBytes(io.writeBytesPerSec))
+            }
+        case .batteryChargeRate:
+            if let watts = model.battery?.chargingWatts {
+                row("Charge Speed", String(format: "%.1f W", watts))
             }
         }
     }

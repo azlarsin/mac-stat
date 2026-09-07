@@ -16,6 +16,8 @@ class StatsModel: ObservableObject {
     @Published var batteryTemp: Double? = nil
     @Published var cpuSpeedLimit: Int? = nil
     @Published var availableCPUs: Int? = nil
+    @Published var thermalPressure: ThermalPressure = .nominal
+    @Published var isLowPowerModeEnabled = false
     @Published var cpuUsage: CPUUsage? = nil
     @Published var memory: MemoryInfo? = nil
     @Published var network: NetworkThroughput? = nil
@@ -62,6 +64,8 @@ class StatsModel: ObservableObject {
         let therm   = readThermInfo()
         cpuSpeedLimit  = therm.cpuSpeedLimit
         availableCPUs  = therm.availableCPUs
+        thermalPressure = therm.thermalPressure
+        isLowPowerModeEnabled = therm.isLowPowerModeEnabled
         let count   = smc.fanCount()
         fanSpeeds   = count > 0 ? (0..<count).compactMap { smc.fanSpeed(index: $0) } : []
         fanPercents = (0..<fanSpeeds.count).map { i in
@@ -87,10 +91,13 @@ class StatsModel: ObservableObject {
                 guard let v = cpuUsage else { return [] }
                 return [MenuBarPart(symbol: "gauge.medium", text: String(format: "%.0f%%", v.totalPercent))]
             case .cpuThrottle:
-                guard let lim = cpuSpeedLimit else {
-                    return [MenuBarPart(symbol: "speedometer", text: "--")]
+                if let lim = cpuSpeedLimit {
+                    return [MenuBarPart(symbol: "speedometer", text: lim < 100 ? "\(lim)%▼" : "\(lim)%")]
                 }
-                return [MenuBarPart(symbol: "speedometer", text: lim < 100 ? "\(lim)%▼" : "\(lim)%")]
+                if isAppleSilicon {
+                    return [MenuBarPart(symbol: "speedometer", text: thermalPressure.popoverText)]
+                }
+                return [MenuBarPart(symbol: "speedometer", text: "--")]
             case .memUsed:
                 guard let v = memory else { return [] }
                 return [MenuBarPart(symbol: "memorychip", text: String(format: "%.0fG", v.usedGB))]
@@ -128,6 +135,9 @@ class StatsModel: ObservableObject {
                 }
                 return [MenuBarPart(symbol: "", text: String(format: "%d%%", b.percent),
                                     image: batteryImage(percent: b.percent))]
+            case .batteryChargeRate:
+                guard let watts = battery?.chargingWatts else { return [] }
+                return [MenuBarPart(symbol: "bolt.fill", text: String(format: "%.1fW", watts))]
             }
         }
     }

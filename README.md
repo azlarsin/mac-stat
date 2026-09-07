@@ -21,12 +21,12 @@ Pick exactly what appears in your menubar and popover — everything is toggleab
 | | |
 |---|---|
 | **Temperature** | CPU · GPU · Battery |
-| **CPU** | Usage % · Throttle / speed limit |
+| **CPU** | Usage % · Thermal state / speed limit |
 | **Memory** | Used GB or % |
 | **Fan** | RPM or % |
 | **Network** | Download · Upload |
 | **Disk** | Free space · Read / write speed |
-| **Battery** | Charge % |
+| **Battery** | Charge % · Charging speed (W) |
 
 ## Screenshots
 

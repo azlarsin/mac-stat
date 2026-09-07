@@ -19,6 +19,7 @@ enum MenuBarItem: String, CaseIterable {
     case diskWrite    = "mb_diskWrite"
     case diskRead     = "mb_diskRead"
     case batteryPct   = "mb_batteryPct"
+    case batteryChargeRate = "mb_batteryChargeRate"
 
     var label: String {
         switch self {
@@ -37,6 +38,28 @@ enum MenuBarItem: String, CaseIterable {
         case .diskWrite:   return "Disk Write"
         case .diskRead:    return "Disk Read"
         case .batteryPct:  return "Battery %"
+        case .batteryChargeRate: return "Battery Charge Speed"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .cpuTemp:           return "thermometer.medium"
+        case .gpuTemp:           return "thermometer.high"
+        case .batteryTemp:       return "battery.100"
+        case .cpuUsage:          return "gauge.medium"
+        case .cpuThrottle:       return "speedometer"
+        case .memUsed:           return "memorychip"
+        case .memPct:            return "memorychip.fill"
+        case .netDown:           return "arrow.down"
+        case .netUp:             return "arrow.up"
+        case .fanSpeed:          return "fan"
+        case .fanSpeedPct:       return "fan.fill"
+        case .diskFree:          return "internaldrive"
+        case .diskWrite:         return "arrow.up.doc"
+        case .diskRead:          return "arrow.down.doc"
+        case .batteryPct:        return "battery.100"
+        case .batteryChargeRate: return "bolt.fill"
         }
     }
 }
@@ -51,8 +74,9 @@ enum PopoverItem: String, CaseIterable {
     case fanSpeed    = "popover_fanSpeed"
     case network     = "popover_network"
     case disk        = "popover_disk"
-    case battery     = "popover_battery"
     case diskIO      = "popover_diskIO"
+    case battery     = "popover_battery"
+    case batteryChargeRate = "popover_batteryChargeRate"
 
     var label: String {
         switch self {
@@ -67,6 +91,7 @@ enum PopoverItem: String, CaseIterable {
         case .disk:        return "Disk"
         case .battery:     return "Battery"
         case .diskIO:      return "Disk I/O"
+        case .batteryChargeRate: return "Battery Charge Speed"
         }
     }
 
@@ -84,8 +109,25 @@ enum PopoverItem: String, CaseIterable {
             return "NETWORK"
         case .disk, .diskIO:
             return "DISK"
-        case .battery:
+        case .battery, .batteryChargeRate:
             return "BATTERY"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .cpuTemp:           return "thermometer.medium"
+        case .gpuTemp:           return "thermometer.high"
+        case .batteryTemp:       return "battery.100"
+        case .cpuUsage:          return "gauge.medium"
+        case .cpuThrottle:       return "speedometer"
+        case .memory:            return "memorychip"
+        case .fanSpeed:          return "fan"
+        case .network:           return "arrow.down.arrow.up"
+        case .disk:              return "internaldrive"
+        case .diskIO:            return "arrow.left.arrow.right"
+        case .battery:           return "battery.100"
+        case .batteryChargeRate: return "bolt.fill"
         }
     }
 }
@@ -110,6 +152,9 @@ class AppSettings: ObservableObject {
     @Published var showThrottle: Bool    { didSet { saveBool("showThrottle", showThrottle) } }
     @Published var showBattery: Bool     { didSet { saveBool("showBattery", showBattery) } }
     @Published var showDiskIO: Bool      { didSet { saveBool("showDiskIO", showDiskIO) } }
+    @Published var showBatteryChargeRate: Bool {
+        didSet { saveBool("showBatteryChargeRate", showBatteryChargeRate) }
+    }
 
     // Ordered list of all popover items; only checked items are rendered.
     @Published var popoverOrder: [PopoverItem] = [] {
@@ -155,6 +200,7 @@ class AppSettings: ObservableObject {
         showThrottle    = b("showThrottle", true)
         showBattery     = b("showBattery", true)
         showDiskIO      = b("showDiskIO", true)
+        showBatteryChargeRate = b("showBatteryChargeRate", true)
 
         if let saved = UserDefaults.standard.stringArray(forKey: kPopoverOrderKey) {
             popoverOrder = Self.normalizedPopoverOrder(saved.compactMap { PopoverItem(rawValue: $0) })
@@ -264,6 +310,7 @@ class AppSettings: ObservableObject {
         case .disk:        return showDisk
         case .battery:     return showBattery
         case .diskIO:      return showDiskIO
+        case .batteryChargeRate: return showBatteryChargeRate
         }
     }
 
@@ -280,6 +327,7 @@ class AppSettings: ObservableObject {
         case .disk:        showDisk = visible
         case .battery:     showBattery = visible
         case .diskIO:      showDiskIO = visible
+        case .batteryChargeRate: showBatteryChargeRate = visible
         }
     }
 
@@ -347,7 +395,17 @@ class AppSettings: ObservableObject {
     }
 
     private static func normalizedPopoverOrder(_ saved: [PopoverItem]) -> [PopoverItem] {
-        normalizedOrder(saved, allItems: PopoverItem.allCases)
+        var result = normalizedOrder(saved, allItems: PopoverItem.allCases)
+
+        // Put this newly introduced item beside Battery for existing users,
+        // while preserving every item they have already reordered.
+        if !saved.contains(.batteryChargeRate),
+           let chargeRateIndex = result.firstIndex(of: .batteryChargeRate),
+           let batteryIndex = result.firstIndex(of: .battery) {
+            result.remove(at: chargeRateIndex)
+            result.insert(.batteryChargeRate, at: batteryIndex + 1)
+        }
+        return result
     }
 
     private static func normalizedMenuBarOrder(_ saved: [MenuBarItem]) -> [MenuBarItem] {
@@ -472,9 +530,11 @@ struct SettingsView: View {
                 get: { s.isPopoverItemVisible(item) },
                 set: { s.setPopoverItem(item, visible: $0) }
             )) {
-                Text(item.label)
-                    .font(.system(size: 12))
-                    .foregroundStyle(s.isPopoverItemVisible(item) ? .primary : .secondary)
+                settingsItemLabel(
+                    item.label,
+                    symbol: item.symbol,
+                    isEnabled: s.isPopoverItemVisible(item)
+                )
             }
             .toggleStyle(.checkbox)
 
@@ -506,9 +566,11 @@ struct SettingsView: View {
                 get: { s.isInMenuBar(item) },
                 set: { _ in s.toggleMenuBar(item) }
             )) {
-                Text(item.label)
-                    .font(.system(size: 12))
-                    .foregroundStyle(s.isInMenuBar(item) ? .primary : .secondary)
+                settingsItemLabel(
+                    item.label,
+                    symbol: item.symbol,
+                    isEnabled: s.isInMenuBar(item)
+                )
             }
             .toggleStyle(.checkbox)
 
@@ -551,6 +613,18 @@ struct SettingsView: View {
                 }
             }
             .help("Drag to reorder")
+    }
+
+    @ViewBuilder
+    private func settingsItemLabel(_ text: String, symbol: String, isEnabled: Bool) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: symbol)
+                .frame(width: 14)
+        }
+        .font(.system(size: 12))
+        .foregroundStyle(isEnabled ? .primary : .secondary)
     }
 
     private func finishSortDrag() {

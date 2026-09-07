@@ -32,6 +32,7 @@ struct DiskUsage {
 struct BatteryInfo {
     var percent: Int
     var isCharging: Bool
+    var chargingWatts: Double?
 }
 
 struct DiskIOStats {
@@ -149,7 +150,40 @@ func readBatteryInfo() -> BatteryInfo? {
           let pct = desc[kIOPSCurrentCapacityKey] as? Int
     else { return nil }
     let charging = (desc[kIOPSIsChargingKey] as? Bool) ?? false
-    return BatteryInfo(percent: pct, isCharging: charging)
+    return BatteryInfo(
+        percent: pct,
+        isCharging: charging,
+        chargingWatts: readBatteryChargingWatts()
+    )
+}
+
+/// Returns the power currently entering the battery, in watts. The smart
+/// battery reports pack current in milliamps and voltage in millivolts, so
+/// multiplying them yields microwatts. Current is the source of truth here:
+/// kIOPSIsChargingKey can lag behind the battery controller's live reading.
+private func readBatteryChargingWatts() -> Double? {
+    let service = IOServiceGetMatchingService(
+        kIOMainPortDefault,
+        IOServiceMatching("AppleSmartBattery")
+    )
+    guard service != 0 else { return nil }
+    defer { IOObjectRelease(service) }
+
+    func int64Property(_ key: String) -> Int64? {
+        guard let value = IORegistryEntryCreateCFProperty(
+            service,
+            key as CFString,
+            kCFAllocatorDefault,
+            0
+        )?.takeRetainedValue() as? NSNumber else { return nil }
+        return value.int64Value
+    }
+
+    guard let current = int64Property("InstantAmperage") ?? int64Property("Amperage"),
+    let voltage = int64Property("Voltage") ?? int64Property("AppleRawBatteryVoltage"),
+    voltage > 0 else { return nil }
+
+    return max(0, Double(current) * Double(voltage) / 1_000_000)
 }
 
 // MARK: Disk IO
