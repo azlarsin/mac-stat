@@ -56,6 +56,74 @@ The interface follows your macOS language preference and supports English, Simpl
 
 **Requirements:** macOS 13 Ventura or later · Intel & Apple Silicon
 
+## Command line / SSH
+
+1. Open MacStat's **Settings** from the menu bar.
+2. Click **Install Command Line Tool** at the bottom of the panel
+   (**安装命令行工具** / **安裝命令列工具** in Chinese).
+3. The panel shows whether installation succeeded. The command is installed at
+   `~/.local/bin/mac-stat` without administrator privileges.
+
+You can also install from Terminal:
+
+```bash
+/Applications/MacStat.app/Contents/MacOS/MacStat install-cli
+```
+
+This installs `mac-stat` into `~/.local/bin`. Add that directory to your shell's `PATH`
+if needed (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). You can also pass a
+different directory to `install-cli`, or call the app executable directly with the
+same commands. Re-run the installer or click the button again if you move the app.
+Reinstalling updates MacStat's own launcher; an unrelated existing `mac-stat`
+command is left untouched and an error is shown.
+
+```bash
+mac-stat settings list
+mac-stat settings get keepAwakeOnACPower
+mac-stat settings set keepAwakeOnACPower on
+mac-stat settings set keepAwakeOnBattery off
+mac-stat settings set keepAwakeWithLidClosed on
+mac-stat settings list --json
+
+# From another machine; use the same account that runs MacStat.
+ssh your-mac '~/.local/bin/mac-stat settings list --json'
+ssh your-mac '~/.local/bin/mac-stat settings set keepAwakeOnACPower on'
+ssh your-mac '~/.local/bin/mac-stat settings set keepAwakeWithLidClosed on'
+```
+
+MacStat must be running in that user's logged-in desktop session. If necessary,
+start it with `open -a MacStat`. The desktop can stay locked while commands run.
+Use `~/.local/bin/mac-stat` over SSH so the remote shell does not need a `PATH`
+change. The CLI connects through a local socket; it works
+over SSH without opening a network port or requiring `sudo`. Changes take effect
+through the same settings logic as the UI and are saved for future launches.
+The CLI exits with `0` on success and `1` on failure, with errors on stderr.
+`--json` returns an object mapping setting names to boolean, array, or string values.
+
+Boolean values accept `true`/`false`, `on`/`off`, or `1`/`0`. Available settings:
+
+| Keys | Values |
+|---|---|
+| `keepAwakeOnACPower`, `keepAwakeOnBattery`, `keepAwakeWithLidClosed` | Boolean; power source choices still govern whether Keep Awake is active |
+| `launchAtLogin` | Boolean; macOS may require approval in System Settings → General → Login Items |
+| `showCPUTemp`, `showGPUTemp`, `showBatteryTemp`, `showCPUUsage`, `showThrottle`, `showMemory`, `showFan`, `showNetwork`, `showDisk`, `showDiskIO`, `showBattery`, `showBatteryChargeRate` | Boolean; controls popover visibility |
+| `menuBarEnabled` | Comma-separated item IDs, `all`, or `none` |
+| `menuBarOrder`, `popoverOrder` | Comma-separated item IDs; omitted items follow in their default order; `''` restores the default order |
+| `keepAwakeError` | Read-only string containing the latest reported lid-mode error, or an empty string |
+
+Use `settings get menuBarOrder` or `settings get popoverOrder` to see the valid IDs.
+For example:
+
+```bash
+mac-stat settings set menuBarEnabled cpuTemp,cpuThrottle,batteryPct
+mac-stat settings set menuBarOrder batteryPct,cpuTemp
+mac-stat settings set popoverOrder battery,memory,cpuTemp
+```
+
+`get` and `set` also accept a final `--json`. Keep Awake values describe the saved
+choices; hardware-dependent lid-mode failures may be reported asynchronously in
+`keepAwakeError`. Run `mac-stat --help` for usage.
+
 ## Build from source
 
 ```bash
@@ -68,6 +136,10 @@ xcodebuild \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGNING_ALLOWED=NO
 ```
+
+Run the CLI tests with `bash Tests/run-cli-tests.sh`. They use isolated preferences
+and sockets and disable system service changes, so they do not change sleep policy
+or login items on the development machine.
 
 ## Author
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added a `mac-stat` command to query and change settings from Terminal or SSH, including Keep Awake, popover visibility, menu bar items, and item order.
+- Added JSON output, error exit codes, and a per-user CLI installer. Commands update the running app through a local Unix socket and persist through the normal settings logic.
+- Added an Install Command Line Tool button in Settings, with installation feedback in English, Simplified Chinese, and Traditional Chinese.
+
 ## [1.6] — 2026-10-19
 
 - Added a separate, persistent Keep Awake on Battery setting, disabled by default.

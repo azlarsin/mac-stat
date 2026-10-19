@@ -17,6 +17,9 @@
 		AA000008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100009 /* SettingsView.swift */; };
 		AA000009 /* LidSleepController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100010 /* LidSleepController.swift */; };
 		AA000010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AA100011 /* Localizable.xcstrings */; };
+		AA000011 /* SettingsControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100012 /* SettingsControl.swift */; };
+		AA000012 /* SettingsCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013 /* SettingsCommand.swift */; };
+		AA000013 /* MacStatCLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* MacStatCLI.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +34,9 @@
 		AA100009 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AA100010 /* LidSleepController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LidSleepController.swift; sourceTree = "<group>"; };
 		AA100011 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		AA100012 /* SettingsControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsControl.swift; sourceTree = "<group>"; };
+		AA100013 /* SettingsCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCommand.swift; sourceTree = "<group>"; };
+		AA100014 /* MacStatCLI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacStatCLI.swift; sourceTree = "<group>"; };
 		AA200001 /* MacStat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacStat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -64,6 +70,9 @@
 				AA100008 /* SystemReader.swift */,
 				AA100009 /* SettingsView.swift */,
 				AA100010 /* LidSleepController.swift */,
+				AA100012 /* SettingsControl.swift */,
+				AA100013 /* SettingsCommand.swift */,
+				AA100014 /* MacStatCLI.swift */,
 				AA100011 /* Localizable.xcstrings */,
 				AA100006 /* Assets.xcassets */,
 				AA100007 /* MacStat.entitlements */,
@@ -159,6 +168,9 @@
 				AA000007 /* SystemReader.swift in Sources */,
 				AA000008 /* SettingsView.swift in Sources */,
 				AA000009 /* LidSleepController.swift in Sources */,
+				AA000011 /* SettingsControl.swift in Sources */,
+				AA000012 /* SettingsCommand.swift in Sources */,
+				AA000013 /* MacStatCLI.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -11,9 +11,22 @@ extension Notification.Name {
 
 @main
 enum MacStatEntryPoint {
+    static let controlServer = SettingsControlServer()
+
     static func main() {
         if CommandLine.arguments.dropFirst() == [LidSleepController.helperArgument] {
             exit(LidSleepController.runHelper())
+        }
+        if let arguments = MacStatCLI.arguments(Array(CommandLine.arguments.dropFirst())) {
+            exit(MacStatCLI.run(arguments))
+        }
+        do {
+            guard try controlServer.start(handler: {
+                SettingsCommand.handle($0, settings: AppSettings.shared)
+            }) else { return }
+        } catch {
+            // A CLI endpoint failure must not prevent normal menu bar use.
+            NSLog("MacStat CLI unavailable: %@", error.localizedDescription)
         }
         MacStatApp.main()
     }
@@ -75,6 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        MacStatEntryPoint.controlServer.stop()
         AppSettings.shared.stopKeepAwakeProcess()
     }
 

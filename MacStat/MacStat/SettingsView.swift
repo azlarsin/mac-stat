@@ -140,6 +140,10 @@ private let kDefaultMenuBarEnabled: Set<MenuBarItem> = [.cpuTemp, .cpuThrottle]
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    private let defaults: UserDefaults
+    // Tests can use isolated preferences without changing the Mac's power policy.
+    let managesSystemServices: Bool
+    private(set) var launchAtLoginError: Error?
 
     // Popover sections
     @Published var showCPUTemp: Bool     { didSet { saveBool("showCPUTemp", showCPUTemp) } }
@@ -204,9 +208,11 @@ class AppSettings: ObservableObject {
     private var caffeinateProcess: Process?
     private var powerSourceRunLoopSource: CFRunLoopSource?
 
-    private init() {
+    init(defaults: UserDefaults = .standard, managesSystemServices: Bool = true) {
+        self.defaults = defaults
+        self.managesSystemServices = managesSystemServices
         func b(_ key: String, _ def: Bool) -> Bool {
-            UserDefaults.standard.object(forKey: key) == nil ? def : UserDefaults.standard.bool(forKey: key)
+            defaults.object(forKey: key) == nil ? def : defaults.bool(forKey: key)
         }
         showCPUTemp     = b("showCPUTemp", true)
         showGPUTemp     = b("showGPUTemp", true)
@@ -221,17 +227,17 @@ class AppSettings: ObservableObject {
         showDiskIO      = b("showDiskIO", true)
         showBatteryChargeRate = b("showBatteryChargeRate", true)
 
-        if let saved = UserDefaults.standard.stringArray(forKey: kPopoverOrderKey) {
+        if let saved = defaults.stringArray(forKey: kPopoverOrderKey) {
             popoverOrder = Self.normalizedPopoverOrder(saved.compactMap { PopoverItem(rawValue: $0) })
         } else {
             popoverOrder = PopoverItem.allCases
         }
 
-        let savedMenuBarOrder = UserDefaults.standard.stringArray(forKey: kMenuBarOrderKey)?
+        let savedMenuBarOrder = defaults.stringArray(forKey: kMenuBarOrderKey)?
             .compactMap { MenuBarItem(rawValue: $0) }
         menuBarOrder = Self.normalizedMenuBarOrder(savedMenuBarOrder ?? [])
 
-        if let enabled = UserDefaults.standard.stringArray(forKey: kMenuBarEnabledKey) {
+        if let enabled = defaults.stringArray(forKey: kMenuBarEnabledKey) {
             menuBarEnabled = Set(enabled.compactMap { MenuBarItem(rawValue: $0) })
         } else if let savedMenuBarOrder, !savedMenuBarOrder.isEmpty {
             menuBarEnabled = Set(savedMenuBarOrder)
@@ -239,7 +245,7 @@ class AppSettings: ObservableObject {
             menuBarEnabled = kDefaultMenuBarEnabled
         }
 
-        if #available(macOS 13.0, *) {
+        if managesSystemServices, #available(macOS 13.0, *) {
             _launchAtLogin = Published(initialValue: SMAppService.mainApp.status == .enabled)
         }
 
@@ -275,9 +281,11 @@ class AppSettings: ObservableObject {
     }
 
     private func applyLaunchAtLogin(_ enable: Bool) {
+        launchAtLoginError = nil
+        guard managesSystemServices else { return }
         guard #available(macOS 13.0, *) else { return }
-        let isEnabled = SMAppService.mainApp.status == .enabled
-        guard enable != isEnabled else { return }
+        let status = SMAppService.mainApp.status
+        guard enable ? status != .enabled : (status == .enabled || status == .requiresApproval) else { return }
         do {
             if enable {
                 try SMAppService.mainApp.register()
@@ -285,11 +293,13 @@ class AppSettings: ObservableObject {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
+            launchAtLoginError = error
             DispatchQueue.main.async { self.launchAtLogin = !enable }
         }
     }
 
     private func observePowerSourceChanges() {
+        guard managesSystemServices else { return }
         guard let source = IOPSNotificationCreateRunLoopSource({ context in
             guard let context else { return }
             let settings = Unmanaged<AppSettings>.fromOpaque(context).takeUnretainedValue()
@@ -301,6 +311,7 @@ class AppSettings: ObservableObject {
     }
 
     private func applyKeepAwake() {
+        guard managesSystemServices else { return }
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let powerSource = IOPSGetProvidingPowerSourceType(snapshot)?.takeUnretainedValue()
         else {
@@ -464,20 +475,20 @@ class AppSettings: ObservableObject {
     }
 
     private func savePopoverOrder() {
-        UserDefaults.standard.set(popoverOrder.map(\.rawValue), forKey: kPopoverOrderKey)
+        defaults.set(popoverOrder.map(\.rawValue), forKey: kPopoverOrderKey)
     }
 
     private func saveMenuBarOrder() {
-        UserDefaults.standard.set(menuBarOrder.map(\.rawValue), forKey: kMenuBarOrderKey)
+        defaults.set(menuBarOrder.map(\.rawValue), forKey: kMenuBarOrderKey)
     }
 
     private func saveMenuBarEnabled() {
         let enabled = menuBarOrder.filter { menuBarEnabled.contains($0) }
-        UserDefaults.standard.set(enabled.map(\.rawValue), forKey: kMenuBarEnabledKey)
+        defaults.set(enabled.map(\.rawValue), forKey: kMenuBarEnabledKey)
     }
 
     private func saveBool(_ key: String, _ value: Bool) {
-        UserDefaults.standard.set(value, forKey: key)
+        defaults.set(value, forKey: key)
     }
 
     private static func normalizedPopoverOrder(_ saved: [PopoverItem]) -> [PopoverItem] {
@@ -513,6 +524,8 @@ struct SettingsView: View {
     @State private var hoveringPopoverItem: PopoverItem?
     @State private var hoveringMenuBarItem: MenuBarItem?
     @State private var isDraggingSortItem = false
+    @State private var cliInstalled = false
+    @State private var cliInstallError: String?
 
     private func isFanItem(_ item: PopoverItem) -> Bool { item == .fanSpeed }
     private func isFanItem(_ item: MenuBarItem) -> Bool { item == .fanSpeed || item == .fanSpeedPct }
@@ -571,6 +584,10 @@ struct SettingsView: View {
                 Divider().padding(.vertical, 8)
 
                 launchAtLoginRow
+
+                Divider().padding(.vertical, 8)
+
+                commandLineRow
         }
         .padding(12)
         .frame(width: 240)
@@ -578,6 +595,49 @@ struct SettingsView: View {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .macStatResizePopover, object: nil)
             }
+        }
+    }
+
+    private var commandLineRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button(action: installCommandLineTool) {
+                Label("Install Command Line Tool", systemImage: "terminal")
+                    .frame(maxWidth: .infinity)
+            }
+            .font(.system(size: 11))
+            .buttonStyle(.bordered)
+
+            Text("Run ~/.local/bin/mac-stat in Terminal or over SSH.")
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if cliInstalled {
+                Text("Command line tool installed.")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.green)
+            }
+            if let cliInstallError {
+                Text(cliInstallError)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func installCommandLineTool() {
+        do {
+            try MacStatCLI.install()
+            cliInstalled = true
+            cliInstallError = nil
+        } catch {
+            cliInstalled = false
+            cliInstallError = String(localized: "Couldn't install the command line tool: \(error.localizedDescription)")
+        }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .macStatResizePopover, object: nil)
         }
     }
 

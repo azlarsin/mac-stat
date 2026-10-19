@@ -392,6 +392,29 @@
         }
       }
     },
+    "Cannot locate the MacStat executable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot locate the MacStat executable."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到 MacStat 可执行文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到 MacStat 執行檔。"
+          }
+        }
+      }
+    },
     "Charge Speed": {
       "extractionState": "manual",
       "localizations": {
@@ -415,6 +438,29 @@
         }
       }
     },
+    "Command line tool installed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command line tool installed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命令行工具已安装。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命令列工具已安裝。"
+          }
+        }
+      }
+    },
     "Couldn't enable lid-closed mode on this Mac.": {
       "extractionState": "manual",
       "localizations": {
@@ -434,6 +480,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法在此 Mac 上啟用闔蓋喚醒。"
+          }
+        }
+      }
+    },
+    "Couldn't install the command line tool: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install the command line tool: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法安装命令行工具：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法安裝命令列工具：%@"
           }
         }
       }
@@ -871,6 +940,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "GPU 溫度"
+          }
+        }
+      }
+    },
+    "Install Command Line Tool": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install Command Line Tool"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装命令行工具"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝命令列工具"
           }
         }
       }
@@ -1381,6 +1473,29 @@
         }
       }
     },
+    "Refusing to overwrite an existing command at %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refusing to overwrite an existing command at %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为避免覆盖已有命令，未安装到 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "為避免覆寫現有命令，未安裝到 %@"
+          }
+        }
+      }
+    },
     "Restore defaults": {
       "extractionState": "manual",
       "localizations": {
@@ -1400,6 +1515,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "回復預設"
+          }
+        }
+      }
+    },
+    "Run ~/.local/bin/mac-stat in Terminal or over SSH.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run ~/.local/bin/mac-stat in Terminal or over SSH."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端或 SSH 中运行 ~/.local/bin/mac-stat。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在終端機或 SSH 中執行 ~/.local/bin/mac-stat。"
           }
         }
       }
