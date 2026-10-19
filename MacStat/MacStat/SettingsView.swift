@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import IOKit.ps
 import ServiceManagement
 import UniformTypeIdentifiers
 
@@ -175,15 +176,33 @@ class AppSettings: ObservableObject {
         didSet { applyLaunchAtLogin(launchAtLogin) }
     }
 
-    // Keep the system awake while on AC power.
-    @Published var keepAwakeWithLidClosed: Bool = false {
+    @Published var keepAwakeOnACPower: Bool = false {
         didSet {
-            saveBool("keepAwakeWithLidClosed", keepAwakeWithLidClosed)
-            applyKeepAwakeWithLidClosed(keepAwakeWithLidClosed)
+            saveBool("keepAwakeOnACPower", keepAwakeOnACPower)
+            applyKeepAwake()
         }
     }
 
+    @Published var keepAwakeOnBattery: Bool = false {
+        didSet {
+            saveBool("keepAwakeOnBattery", keepAwakeOnBattery)
+            applyKeepAwake()
+        }
+    }
+
+    @Published var keepAwakeWithLidClosed: Bool = false {
+        didSet {
+            // The old similarly named key only enabled caffeinate on AC power.
+            saveBool("keepAwakeWhenLidClosed", keepAwakeWithLidClosed)
+            keepAwakeError = nil
+            applyKeepAwake()
+        }
+    }
+
+    @Published private(set) var keepAwakeError: String?
+    private let lidSleepController = LidSleepController()
     private var caffeinateProcess: Process?
+    private var powerSourceRunLoopSource: CFRunLoopSource?
 
     private init() {
         func b(_ key: String, _ def: Bool) -> Bool {
@@ -224,10 +243,27 @@ class AppSettings: ObservableObject {
             _launchAtLogin = Published(initialValue: SMAppService.mainApp.status == .enabled)
         }
 
-        _keepAwakeWithLidClosed = Published(
-            initialValue: b("keepAwakeWithLidClosed", false)
+        _keepAwakeOnACPower = Published(
+            initialValue: b("keepAwakeOnACPower", b("keepAwakeWithLidClosed", false))
         )
-        applyKeepAwakeWithLidClosed(keepAwakeWithLidClosed)
+        _keepAwakeOnBattery = Published(
+            initialValue: b("keepAwakeOnBattery", false)
+        )
+        _keepAwakeWithLidClosed = Published(
+            initialValue: b("keepAwakeWhenLidClosed", false)
+        )
+        lidSleepController.onFailure = { [weak self] in
+            self?.disableLidClosedKeepAwake()
+        }
+        observePowerSourceChanges()
+        applyKeepAwake()
+    }
+
+    deinit {
+        if let source = powerSourceRunLoopSource {
+            CFRunLoopSourceInvalidate(source)
+        }
+        stopKeepAwakeProcess()
     }
 
     var visiblePopoverItems: [PopoverItem] {
@@ -253,27 +289,51 @@ class AppSettings: ObservableObject {
         }
     }
 
-    private func applyKeepAwakeWithLidClosed(_ enable: Bool) {
-        if !enable {
-            stopKeepAwakeProcess()
+    private func observePowerSourceChanges() {
+        guard let source = IOPSNotificationCreateRunLoopSource({ context in
+            guard let context else { return }
+            let settings = Unmanaged<AppSettings>.fromOpaque(context).takeUnretainedValue()
+            settings.applyKeepAwake()
+        }, Unmanaged.passUnretained(self).toOpaque())?.takeRetainedValue() else { return }
+
+        powerSourceRunLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+    }
+
+    private func applyKeepAwake() {
+        guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let powerSource = IOPSGetProvidingPowerSourceType(snapshot)?.takeUnretainedValue()
+        else {
+            stopCaffeinateProcess()
+            applyLidClosedKeepAwake(false)
             return
         }
 
-        guard caffeinateProcess?.isRunning != true else { return }
+        let onBattery = powerSource as String != kIOPMACPowerKey
+        let enabled = onBattery ? keepAwakeOnBattery : keepAwakeOnACPower
+        guard enabled else {
+            stopCaffeinateProcess()
+            applyLidClosedKeepAwake(false)
+            return
+        }
+
+        // -s only works on AC; -i prevents idle sleep on battery as well.
+        let arguments = [onBattery ? "-i" : "-s",
+                         "-w", String(ProcessInfo.processInfo.processIdentifier)]
+        applyLidClosedKeepAwake(keepAwakeWithLidClosed)
+        guard caffeinateProcess?.isRunning != true || caffeinateProcess?.arguments != arguments
+        else { return }
+
+        stopCaffeinateProcess()
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
-        process.arguments = [
-            "-s",
-            "-w", String(ProcessInfo.processInfo.processIdentifier),
-        ]
+        process.arguments = arguments
         process.terminationHandler = { [weak self, weak process] _ in
             DispatchQueue.main.async {
                 guard let self, self.caffeinateProcess === process else { return }
                 self.caffeinateProcess = nil
-                if self.keepAwakeWithLidClosed {
-                    self.keepAwakeWithLidClosed = false
-                }
+                self.disableKeepAwake(onBattery: onBattery)
             }
         }
 
@@ -282,14 +342,40 @@ class AppSettings: ObservableObject {
             caffeinateProcess = process
         } catch {
             DispatchQueue.main.async {
-                if self.keepAwakeWithLidClosed {
-                    self.keepAwakeWithLidClosed = false
-                }
+                guard self.caffeinateProcess == nil else { return }
+                self.disableKeepAwake(onBattery: onBattery)
             }
         }
     }
 
+    private func disableKeepAwake(onBattery: Bool) {
+        if onBattery {
+            keepAwakeOnBattery = false
+        } else {
+            keepAwakeOnACPower = false
+        }
+    }
+
+    private func applyLidClosedKeepAwake(_ enabled: Bool) {
+        do {
+            try lidSleepController.setEnabled(enabled)
+        } catch {
+            lidSleepController.stop()
+            DispatchQueue.main.async { self.disableLidClosedKeepAwake() }
+        }
+    }
+
+    private func disableLidClosedKeepAwake() {
+        keepAwakeWithLidClosed = false
+        keepAwakeError = String(localized: "Couldn't enable lid-closed mode on this Mac.")
+    }
+
     func stopKeepAwakeProcess() {
+        lidSleepController.stop()
+        stopCaffeinateProcess()
+    }
+
+    private func stopCaffeinateProcess() {
         let process = caffeinateProcess
         caffeinateProcess = nil
         if process?.isRunning == true {
@@ -488,16 +574,33 @@ struct SettingsView: View {
         }
         .padding(12)
         .frame(width: 240)
+        .onReceive(s.$keepAwakeError) { _ in
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .macStatResizePopover, object: nil)
+            }
+        }
     }
 
     private var keepAwakeRow: some View {
         VStack(alignment: .leading, spacing: 2) {
+            toggle("Keep Awake on AC Power", $s.keepAwakeOnACPower)
+                .padding(.horizontal, 0)
+            toggle("Keep Awake on Battery", $s.keepAwakeOnBattery)
+                .padding(.horizontal, 0)
             toggle("Keep Awake with Lid Closed", $s.keepAwakeWithLidClosed)
                 .padding(.horizontal, 0)
-            Text("Uses caffeinate -s; active on AC power")
+            Text("Lid-closed mode follows the AC and battery choices. Screen saver and auto-lock still work.")
                 .font(.system(size: 9))
                 .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 4)
+            if let error = s.keepAwakeError {
+                Text(error)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
         }
     }
 
@@ -515,6 +618,7 @@ struct SettingsView: View {
                 Text("Move app to /Applications to enable")
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
             }
         }
@@ -618,7 +722,7 @@ struct SettingsView: View {
     @ViewBuilder
     private func settingsItemLabel(_ text: String, symbol: String, isEnabled: Bool) -> some View {
         Label {
-            Text(text)
+            Text(LocalizedStringKey(text))
         } icon: {
             Image(systemName: symbol)
                 .frame(width: 14)
@@ -641,7 +745,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func header(_ text: String) -> some View {
-        Text(text)
+        Text(LocalizedStringKey(text))
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
@@ -649,7 +753,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func sectionHeader(_ text: String, onReset: @escaping () -> Void) -> some View {
+    private func sectionHeader(_ text: LocalizedStringKey, onReset: @escaping () -> Void) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(text)
                 .font(.system(size: 10, weight: .semibold))
@@ -678,7 +782,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func toggle(_ label: String, _ binding: Binding<Bool>) -> some View {
+    private func toggle(_ label: LocalizedStringKey, _ binding: Binding<Bool>) -> some View {
         Toggle(label, isOn: binding)
             .toggleStyle(.checkbox)
             .font(.system(size: 12))

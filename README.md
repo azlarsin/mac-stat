@@ -28,6 +28,16 @@ Pick exactly what appears in your menubar and popover — everything is toggleab
 | **Disk** | Free space · Read / write speed |
 | **Battery** | Charge % · Charging speed (W) |
 
+Settings include three persistent Keep Awake checkboxes:
+
+- **Keep Awake on AC Power** — prevent system sleep while plugged in.
+- **Keep Awake on Battery** — prevent idle system sleep on battery (off by default).
+- **Keep Awake with Lid Closed** — also prevent lid-close sleep on the selected power sources (off by default). For example, select AC Power and Lid Closed to keep running with the lid closed only while plugged in; also select Battery to allow it when unplugged.
+
+The display can still turn off. Lid-closed mode uses IOKit's undocumented `kPMSetClamshellSleepState` interface ([Apple's implementation](https://github.com/apple-oss-distributions/xnu/blob/main/iokit/Kernel/RootDomainUserClient.cpp)), without administrator privileges or changing `pmset` preferences. A helper restores lid-close sleep when the option is disabled or MacStat exits, including an unexpected exit of the main app. If macOS rejects the interface, MacStat unchecks the lid option and shows an error. Physical lid behavior may vary with hardware and macOS versions.
+
+The interface follows your macOS language preference and supports English, Simplified Chinese, and Traditional Chinese.
+
 ## Screenshots
 
 <p align="center">

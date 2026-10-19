@@ -15,6 +15,8 @@
 		AA000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100006 /* Assets.xcassets */; };
 		AA000007 /* SystemReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100008 /* SystemReader.swift */; };
 		AA000008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100009 /* SettingsView.swift */; };
+		AA000009 /* LidSleepController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100010 /* LidSleepController.swift */; };
+		AA000010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AA100011 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,8 @@
 		AA100007 /* MacStat.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacStat.entitlements; sourceTree = "<group>"; };
 		AA100008 /* SystemReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemReader.swift; sourceTree = "<group>"; };
 		AA100009 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA100010 /* LidSleepController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LidSleepController.swift; sourceTree = "<group>"; };
+		AA100011 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		AA200001 /* MacStat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacStat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -59,6 +63,8 @@
 				AA100005 /* ThermReader.swift */,
 				AA100008 /* SystemReader.swift */,
 				AA100009 /* SettingsView.swift */,
+				AA100010 /* LidSleepController.swift */,
+				AA100011 /* Localizable.xcstrings */,
 				AA100006 /* Assets.xcassets */,
 				AA100007 /* MacStat.entitlements */,
 			);
@@ -115,6 +121,8 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = AA400000;
 			productRefGroup = AA400002 /* Products */;
@@ -132,6 +140,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA000006 /* Assets.xcassets in Resources */,
+				AA000010 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -149,6 +158,7 @@
 				AA000005 /* ThermReader.swift in Sources */,
 				AA000007 /* SystemReader.swift in Sources */,
 				AA000008 /* SettingsView.swift in Sources */,
+				AA000009 /* LidSleepController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -283,7 +293,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableDescription = "Minimal macOS system stats in your menubar";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azlar.macstat;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -305,7 +315,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableDescription = "Minimal macOS system stats in your menubar";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azlar.macstat;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

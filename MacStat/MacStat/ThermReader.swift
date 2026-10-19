@@ -22,10 +22,10 @@ enum ThermalPressure: Equatable {
 
     var popoverText: String {
         switch self {
-        case .nominal:  return "Normal"
-        case .fair:     return "Fair"
-        case .serious:  return "Serious"
-        case .critical: return "Critical"
+        case .nominal:  return String(localized: "Normal")
+        case .fair:     return String(localized: "Fair")
+        case .serious:  return String(localized: "Serious")
+        case .critical: return String(localized: "Critical")
         }
     }
 

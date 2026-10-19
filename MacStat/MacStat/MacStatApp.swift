@@ -10,6 +10,15 @@ extension Notification.Name {
 }
 
 @main
+enum MacStatEntryPoint {
+    static func main() {
+        if CommandLine.arguments.dropFirst() == [LidSleepController.helperArgument] {
+            exit(LidSleepController.runHelper())
+        }
+        MacStatApp.main()
+    }
+}
+
 struct MacStatApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     var body: some Scene {
@@ -163,13 +172,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func showContextMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "About MacStat", action: #selector(showAbout), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "About MacStat"), action: #selector(showAbout), keyEquivalent: "")
             .target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Settings", action: #selector(openSettings), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "Settings"), action: #selector(openSettings), keyEquivalent: "")
             .target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit MacStat", action: #selector(quitApp), keyEquivalent: "q")
+        menu.addItem(withTitle: String(localized: "Quit MacStat"), action: #selector(quitApp), keyEquivalent: "q")
             .target = self
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
@@ -193,7 +202,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = "About MacStat"
+        panel.title = String(localized: "About MacStat")
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.center()

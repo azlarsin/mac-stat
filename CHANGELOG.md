@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6] — 2026-10-19
+
+- Added a separate, persistent Keep Awake on Battery setting, disabled by default.
+- Keep Awake now follows the AC and battery settings automatically when the power source changes.
+- Added an independent, persistent Keep Awake with Lid Closed setting, disabled by default, that follows the AC and battery choices.
+- Lid-closed mode now controls clamshell sleep through IOKit and restores normal behavior when disabled or when the main app exits unexpectedly.
+- Added English, Simplified Chinese, and Traditional Chinese localization across settings, statistics, menus, status text, and error messages.
+
 ## [1.5] — 2026-09-07
 
 - Added the battery charging speed, in watts, as configurable popover and menu bar items.

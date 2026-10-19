@@ -98,7 +98,7 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help(showSettings ? "Back to stats" : "Settings")
+            .help(LocalizedStringKey(showSettings ? "Back to stats" : "Settings"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -142,7 +142,7 @@ struct ContentView: View {
                     row("Speed Limit", "--")
                 }
                 if model.isLowPowerModeEnabled {
-                    row("Power Mode", "Low Power", color: .orange)
+                    row("Power Mode", String(localized: "Low Power"), color: .orange)
                 }
             }
             if let cpus = model.availableCPUs {
@@ -186,7 +186,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private func sectionHeader(_ title: String) -> some View {
-        Text(title)
+        Text(LocalizedStringKey(title))
             .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(.tertiary)
             .padding(.horizontal, 12)
@@ -195,7 +195,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func row(_ label: String, _ value: String, color: Color = .primary) -> some View {
+    private func row(_ label: LocalizedStringKey, _ value: String, color: Color = .primary) -> some View {
         HStack {
             Text(label)
                 .foregroundStyle(.secondary)
@@ -223,6 +223,6 @@ struct ContentView: View {
 
 private let timeFormatter: DateFormatter = {
     let f = DateFormatter()
-    f.dateFormat = "HH:mm:ss"
+    f.setLocalizedDateFormatFromTemplate("jmmss")
     return f
 }()
